@@ -1,0 +1,17 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  vars:
+    image_name: hello-go
+    replicas: 1
+
+  tasks:
+    - name: Scale {{ image_name }} deployment
+      k8s_scale:
+        api_version: v1
+        kind: Deployment
+        name: "{{ image_name }}"
+        namespace: default
+        replicas: "{{ replicas }}"
+        wait: false

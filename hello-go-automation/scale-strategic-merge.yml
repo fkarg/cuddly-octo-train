@@ -1,0 +1,24 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  vars:
+    image_name: hello-go
+    replicas: 4
+
+  tasks:
+    # do a strategic merge of previously existing configuration
+    # mostly leaves existing settings intact and only updates those with
+    # changes here
+    - name: Scale the deployment via strategic merge
+      k8s:
+        state: present
+        merge_type: strategic-merge
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: "{{ image_name }}"
+            namespace: default
+          spec:
+            replicas: "{{ replicas }}"

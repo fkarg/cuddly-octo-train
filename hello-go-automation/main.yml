@@ -1,0 +1,90 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  vars:
+    # ansible_python_interpreter: "{{ ansible_playbook_python }}"  # really only necessary for local connections
+    image_name: hello-go
+    replicas: 4
+    app_state: absent
+
+  pre_tasks:
+    - name: Check Minikube status
+      command: minikube status
+      register: minikube_status
+      changed_when: false
+      ignore_errors: true
+    - name: Start Minikube if it's not running
+      command: minikube start
+      when: not minikube_status.stdout or 'Running' not in minikube_status.stdout
+
+  tasks:
+    # Build the hello-go docker image inside minikube
+    - name: Get hash of required image
+      shell: |
+        eval $(minikube docker-env)
+        docker images -q {{ image_name }}
+      register: image_hash
+      changed_when: false
+    - name: Build required image if not build yet
+      shell: |
+        eval $(minikube docker-env)
+        docker build -t {{ image_name }} ../hello-go
+      when: app_state == "present" and not image_hash.stdout
+    - name: Create Deployment for {{ image_name }}
+      k8s:
+        state: "{{ app_state }}"
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: "{{ image_name }}"
+            namespace: default
+          spec:
+            replicas: "{{ replicas }}"
+            selector:
+              matchLabels:
+                app: "{{ image_name }}"
+            template:
+              metadata:
+                labels:
+                  app: "{{ image_name }}"
+              spec:
+                containers:
+                  - name: "{{ image_name }}"
+                    image: "{{ image_name }}"
+                    imagePullPolicy: IfNotPresent
+                    ports:
+                    - containerPort: 8180
+    - name: Create Service for {{ image_name }}
+      k8s:
+        state: "{{ app_state }}"
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: "{{ image_name }}"
+            namespace: default
+          spec:
+            type: LoadBalancer
+            ports:
+              - port: 8180
+                targetPort: 8180
+            selector:
+              app: "{{ image_name }}"
+    - name: Clean up built Image
+      shell: |
+        eval $(minikube docker-env)
+        docker rmi {{ image_hash.stdout }}
+      when: app_state == "absent" and image_hash.stdout
+
+  post_tasks:
+    - name: Expose "{{ image_name }}" on the host via minikube
+      command: minikube service {{ image_name }} --url
+      changed_when: false
+      register: minikube_service
+      when: app_state == "present"
+    - debug:
+        msg: "Service URL: {{minikube_service['stdout_lines'][0] }}"
+      when: app_state == "present"
+
