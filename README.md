@@ -1,6 +1,7 @@
 # cuddly-octo-train
-A repository for learning, where I follow the 'ansible for kubernetes'-book
-from Jeff Geerling to get familiar in how to manage kubernetes with ansible.
+A repository for learning, where I follow various resources on learning
+kubernetes. While doing so, I also try to build up a number of ansible ansible
+automations to do that.
 
 # Useful Kubernetes Resources
 - https://ansibleforkubernetes.com
