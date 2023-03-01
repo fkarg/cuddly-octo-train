@@ -1,0 +1,16 @@
+{
+  "CN": "{{ item.CN }}{{ item.name }}{% if item.item is defined %}{{ item.item }}{%endif%}",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "US",
+      "L": "Portland",
+      "O": "{{ item.O }}{% if item.append_name is defined %}{{ item.name }}{%endif%}",
+      "OU": "Kubernetes The Hard Way",
+      "ST": "Oregon"
+    }
+  ]
+}

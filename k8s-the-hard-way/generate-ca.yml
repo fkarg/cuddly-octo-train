@@ -1,0 +1,58 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars/main.yml
+
+  tasks:
+    - name: set external IPs
+      shell: >
+        gcloud compute instances describe worker-{{ item }} 
+        --format 'value(networkInterfaces[0].accessConfigs[0].natIP)'
+      register: workers_external_ip
+      loop: "{{ range(num_workers)|list }}"
+    - debug:
+        msg: "{{ workers_external_ip.results | map(attribute='stdout') | join('  ') }}"
+
+    - name: set internal IPs
+      shell: >
+        gcloud compute instances describe worker-{{ item }} 
+        --format 'value(networkInterfaces[0].networkIP)'
+      register: workers_internal_ip
+      loop: "{{ range(num_workers)|list }}"
+    - debug:
+        msg: "{{ workers_internal_ip.results | map(attribute='stdout') | join('  ') }}"
+
+    - name: Template Worker Certificates
+      template:
+        src: templates/instance-csr.json.j2
+        dest: ca/worker-{{ item }}-csr.json
+      vars:
+        CN: "system:node:worker-"
+      loop: "{{ range(num_workers)|list }}"
+
+    - name: Generate Worker Certificates
+      shell: >
+        cfssl gencert
+        -ca=ca.pem
+        -ca-key=ca-key.pem
+        -config=ca-config.json
+        -hostname=worker-{{ conf.0 }},{{ conf.1.stdout }},{{ conf.2.stdout }}
+        -profile=kubernetes
+        worker-{{ conf.0 }}-csr.json | cfssljson -bare worker-{{ conf.0 }}
+      args:
+        chdir: ca
+      loop: "{{ range(num_workers)| zip(workers_external_ip.results, workers_internal_ip.results)| list }}"
+      loop_control:
+        loop_var: conf
+
+  tasks:
+    - name: Template and Generate Certificates
+      include_tasks: template_and_generate_certificates.yml
+      with_items:
+        - { name: "admin", CN: "", O: "system:masters" }
+        - { name: "kube-scheduler", CN: "system:", O: "system:", append_name: true}
+        - { name: "kube-controller-manager", CN: "system:", O: "system:", append_name: true }
+

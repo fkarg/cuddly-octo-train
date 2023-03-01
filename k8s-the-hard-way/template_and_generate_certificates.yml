@@ -1,0 +1,19 @@
+---
+- name: Template {{ item.name }} Certificates
+  template:
+    src: templates/instance-csr.json.j2
+    dest: ca/{{ item.name }}-csr.json
+
+- name: Generate {{ item.name }} Certificates
+  shell: >
+    cfssl gencert
+    -ca=ca.pem
+    -ca-key=ca-key.pem
+    {% if item.additional is defined %}{{ item.additional }}{% endif %}
+    -config=ca-config.json
+    -profile=kubernetes
+    {{ item.name }}-csr.json | cfssljson -bare {{ item.name }}
+  args:
+    chdir: ca
+
+
