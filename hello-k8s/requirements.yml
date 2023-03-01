@@ -1,0 +1,6 @@
+---
+roles:
+- name: geerlingguy.security  # automatic updates, lock down ssh
+- name: geerlingguy.swap  # disable swap on machine
+- name: geerlingguy.docker  # container runtime
+- name: geerlingguy.kubernetes  # kubernetes essentials

@@ -1,0 +1,17 @@
+---
+- hosts: kube
+  gather_facts: true
+  become: true
+
+  vars_files:
+    - vars/main.yml
+
+  pre_tasks:
+    - name: ensure apt is updated
+      apt:
+        update_cache: yes
+  roles:
+    - geerlingguy.security
+    - geerlingguy.swap
+    - geerlingguy.docker
+    - geerlingguy.kubernetes
